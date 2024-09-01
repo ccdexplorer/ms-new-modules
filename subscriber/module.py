@@ -91,7 +91,7 @@ class Module(_utils):
         db_to_use = self.motor_testnet if net == "testnet" else self.motor_mainnet
         module_ref = msg["module_ref"]
         try:
-            results = self.get_module_metadata(net, "last_final", module_ref)
+            results = self.get_module_metadata(NET(net), "last_final", module_ref)
         except Exception as e:
             tooter_message = f"{net}: New module failed with error  {e}."
             self.send_to_tooter(tooter_message)

@@ -12,3 +12,5 @@ paho-mqtt
 protobuf==4.25.4
 rich
 pymongo
+base58
+pydantic
