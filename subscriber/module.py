@@ -106,7 +106,7 @@ class Module(_utils):
         }
 
         _ = await db_to_use[Collections.modules].bulk_write(
-            [ReplaceOne(ReplaceOne({"_id": module_ref}, module, upsert=True))]
+            [ReplaceOne({"_id": module_ref}, module, upsert=True)]
         )
         tooter_message = f"{net}: New module processed {module_ref} with name {module['module_name']}."
         self.send_to_tooter(tooter_message)

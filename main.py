@@ -10,7 +10,7 @@ from ccdexplorer_fundamentals.GRPCClient import GRPCClient
 from ccdexplorer_fundamentals.mongodb import MongoMotor
 from ccdexplorer_fundamentals.tooter import Tooter
 
-from env import MQTT_PASSWORD, MQTT_QOS, MQTT_SERVER, MQTT_USER
+from env import MQTT_PASSWORD, MQTT_QOS, MQTT_SERVER, MQTT_USER, RUN_LOCAL
 from subscriber import Subscriber
 
 grpcclient = GRPCClient()
@@ -42,7 +42,7 @@ async def main():
         username=MQTT_USER,
         password=MQTT_PASSWORD,
         clean_session=False,
-        identifier="module-mqtt-listener",
+        identifier=f"{RUN_LOCAL}module-mqtt-listener",
     )
     await subscriber.cleanup()
     while True:
