@@ -1,0 +1,14 @@
+ccdexplorer-fundamentals
+python-dotenv
+grpcio
+aiohttp==3.9.3
+aiomqtt
+asyncio
+grpcio-tools
+betterproto==2.0.0b5
+pytest
+python-dotenv
+paho-mqtt
+protobuf==4.25.4
+rich
+pymongo
