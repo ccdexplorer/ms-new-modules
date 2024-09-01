@@ -32,7 +32,7 @@ class Module(_utils):
             module = wadze.parse_module(bs.read())
         except Exception as e:
             tooter_message = (
-                f"{net}: New module get_module_metadata failed with error  {e}."
+                f"{net.value}: New module get_module_metadata failed with error  {e}."
             )
             self.send_to_tooter(tooter_message)
             return {}
@@ -61,7 +61,7 @@ class Module(_utils):
         for net in NET:
             console.log(f"Running cleanup for {net}")
             db: dict[Collections, Collection] = (
-                self.motor_mainnet if net.value == "mainnet" else self.motor_testnet
+                self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
             )
 
             todo_modules = (
@@ -73,27 +73,27 @@ class Module(_utils):
                 await self.process_new_module(net, msg)
                 await self.remove_todo_from_queue(net, msg)
 
-    async def remove_todo_from_queue(self, net: str, msg: dict):
+    async def remove_todo_from_queue(self, net: NET, msg: dict):
         db: dict[Collections, Collection] = (
-            self.motor_mainnet if net.value == "mainnet" else self.motor_testnet
+            self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
         )
 
         _ = await db[Collections.queue_todo].bulk_write(
             [DeleteOne({"_id": msg["_id"]})]
         )
 
-    async def process_new_module(self, net: str, msg: dict):
+    async def process_new_module(self, net: NET, msg: dict):
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.grpcclient: GRPCClient
         self.tooter: Tooter
 
-        db_to_use = self.motor_testnet if net == "testnet" else self.motor_mainnet
+        db_to_use = self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
         module_ref = msg["module_ref"]
         try:
-            results = self.get_module_metadata(NET(net), "last_final", module_ref)
+            results = self.get_module_metadata(net, "last_final", module_ref)
         except Exception as e:
-            tooter_message = f"{net}: New module failed with error  {e}."
+            tooter_message = f"{net.value}: New module failed with error  {e}."
             self.send_to_tooter(tooter_message)
             return
 
@@ -108,5 +108,5 @@ class Module(_utils):
         _ = await db_to_use[Collections.modules].bulk_write(
             [ReplaceOne({"_id": module_ref}, module, upsert=True)]
         )
-        tooter_message = f"{net}: New module processed {module_ref} with name {module['module_name']}."
+        tooter_message = f"{net.value}: New module processed {module_ref} with name {module['module_name']}."
         self.send_to_tooter(tooter_message)

@@ -9,7 +9,7 @@ from aiomqtt.client import Message
 from ccdexplorer_fundamentals.GRPCClient import GRPCClient
 from ccdexplorer_fundamentals.mongodb import MongoMotor
 from ccdexplorer_fundamentals.tooter import Tooter
-
+from ccdexplorer_fundamentals.enums import NET
 from env import MQTT_PASSWORD, MQTT_QOS, MQTT_SERVER, MQTT_USER, RUN_LOCAL
 from subscriber import Subscriber
 
@@ -27,8 +27,8 @@ def decode_to_json(msg: Message):
     return m_in
 
 
-def filter_net(msg: Message):
-    return msg.topic.value.split("/")[1]
+def filter_net(msg: Message) -> NET:
+    return NET(msg.topic.value.split("/")[1])
 
 
 async def main():
