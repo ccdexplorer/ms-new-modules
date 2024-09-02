@@ -31,7 +31,7 @@ def filter_net(msg: Message) -> NET:
     try:
         return NET(msg.topic.value.split("/")[1])
     except:  # noqa: E722
-        return "mainnet"
+        return NET.MAINNET
 
 
 async def main():
