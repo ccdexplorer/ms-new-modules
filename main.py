@@ -28,7 +28,10 @@ def decode_to_json(msg: Message):
 
 
 def filter_net(msg: Message) -> NET:
-    return NET(msg.topic.value.split("/")[1])
+    try:
+        return NET(msg.topic.value.split("/")[1])
+    except:  # noqa: E722
+        return "mainnet"
 
 
 async def main():
