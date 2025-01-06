@@ -2,6 +2,7 @@ import os
 
 # import ast
 from dotenv import load_dotenv
+import ast
 
 load_dotenv()
 
@@ -15,3 +16,12 @@ MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD")
 MQTT_SERVER = os.environ.get("MQTT_SERVER")
 MQTT_QOS = int(os.environ.get("MQTT_QOS"))
 RUN_LOCAL = os.environ.get("RUN_LOCAL", "")
+if not os.environ.get("GRPC_MAINNET"):
+    GRPC_MAINNET = []
+else:
+    GRPC_MAINNET = ast.literal_eval(os.environ["GRPC_MAINNET"])
+
+if not os.environ.get("GRPC_TESTNET"):
+    GRPC_TESTNET = []
+else:
+    GRPC_TESTNET = ast.literal_eval(os.environ["GRPC_TESTNET"])

@@ -5,6 +5,7 @@ from ccdexplorer_fundamentals.mongodb import (
     MongoMotor,
 )
 from ccdexplorer_fundamentals.tooter import Tooter
+from concordium_client import ConcordiumClient
 from pymongo.collection import Collection
 from rich.console import Console
 
@@ -20,10 +21,12 @@ class Subscriber(_module, _utils):
         grpcclient: GRPCClient,
         tooter: Tooter,
         motormongo: MongoMotor,
+        concordium_client: ConcordiumClient,
     ):
         self.grpcclient = grpcclient
         self.tooter = tooter
         self.motormongo = motormongo
+        self.concordium_client = concordium_client
 
         self.motor_mainnet: dict[Collections, Collection] = self.motormongo.mainnet
         self.motor_testnet: dict[Collections, Collection] = self.motormongo.testnet
