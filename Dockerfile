@@ -1,7 +1,14 @@
 FROM python:3.12-slim-bookworm
 
-# Install required packages
-RUN apt-get update && apt-get install -y wget curl
+# Install required packages and build dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    wget \
+    curl \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set up working directory
 WORKDIR /home/code
@@ -13,17 +20,12 @@ RUN mkdir -p /code
 RUN wget https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /code/concordium-client \
     && chmod +x /code/concordium-client
 
-# Download and install rustup
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh \
-    && chmod +x rustup.sh \
-    && ./rustup.sh -y \
-    && rm rustup.sh
-
-# Add rust to path
+# Download and install rustup with cargo
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install cargo-concordium
-RUN cargo install cargo-concordium
+RUN cargo install --locked cargo-concordium
 
 # Install Python dependencies
 COPY requirements.txt .
