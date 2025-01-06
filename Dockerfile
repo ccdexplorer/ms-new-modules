@@ -8,13 +8,14 @@ RUN apt-get update && \
     build-essential \
     pkg-config \
     libssl-dev \
+    git \
+    cmake \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up working directory
+# Set up working directory and tmp directory
 WORKDIR /home/code
+RUN mkdir -p /home/code/tmp && chmod 777 /home/code/tmp
 
-# Create /code directory
-RUN mkdir -p /code
 
 # Download concordium-client package
 RUN wget https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /code/concordium-client \

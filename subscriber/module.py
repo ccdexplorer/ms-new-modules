@@ -16,6 +16,7 @@ from rich.console import Console
 import subprocess
 import httpx
 import os
+import shutil
 import datetime as dt
 import tarfile
 from pathlib import Path
@@ -128,6 +129,7 @@ class Module(_utils):
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.tooter: Tooter
+
         module_ref = msg["module_ref"]
 
         file_path = Path(f"tmp/{module_ref}.out")
@@ -137,6 +139,17 @@ class Module(_utils):
         db_to_use = self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
 
         concordium_client.save_module(net, module_ref)
+
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"Module path exists: {os.path.exists(f'tmp/{module_ref}.out')}")
+        print(
+            f"Cargo version: {subprocess.run(['cargo', '--version'], capture_output=True, text=True).stdout}"
+        )
+
+        # Before the subprocess.run call, add:
+        tmp_dir = "tmp"
+        if not os.path.exists(tmp_dir):
+            os.makedirs(tmp_dir)
 
         cargo_run = subprocess.run(
             [
@@ -192,6 +205,9 @@ class Module(_utils):
                 ],
                 capture_output=True,
                 text=True,
+                cwd=os.path.dirname(
+                    os.path.abspath(__file__)
+                ),  # Ensure correct working directory
             )
 
             if cargo_run.returncode != 0:
