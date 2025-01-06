@@ -1,33 +1,35 @@
 FROM python:3.12-slim-bookworm
-# Add a step to install wget
-RUN apt-get update && apt-get install -y wget
 
+# Install required packages
+RUN apt-get update && apt-get install -y wget curl
+
+# Set up working directory
 WORKDIR /home/code
-# download concordium-client package
-RUN wget https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /code/concordium-client && chmod +x /code/concordium-client
 
-# download rustup install script
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > /code/rustup.sh && chmod +x /code/rustup.sh
+# Create /code directory
+RUN mkdir -p /code
 
-# install rustup
-RUN /home/code/rustup.sh -y
-RUN rm /home/code/rustup.sh
+# Download concordium-client package
+RUN wget https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /code/concordium-client \
+    && chmod +x /code/concordium-client
 
-# add rust to path
+# Download and install rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup.sh \
+    && chmod +x rustup.sh \
+    && ./rustup.sh -y \
+    && rm rustup.sh
+
+# Add rust to path
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# install cargo-concordium
+# Install cargo-concordium
 RUN cargo install cargo-concordium
 
-
-WORKDIR /home/code
-RUN cd /home/code
-
-# Install Python dependencies.
-COPY ./requirements.txt .
+# Install Python dependencies
+COPY requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
-# Copy application files.
+
+# Copy application files
 COPY . .
-#
 
 CMD ["python3", "/home/code/main.py"]
