@@ -193,6 +193,12 @@ class Module(_utils):
                 capture_output=True,
                 text=True,
             )
+
+            if cargo_run.returncode != 0:
+                print(f"Error: {cargo_run.stderr}")
+                raise Exception(
+                    f"cargo-concordium verify-build failed: {cargo_run.stderr}"
+                )
             print(f"{dt.datetime.now()}: Subprocess.run for verify-build done.")
             result = ansi_escape.sub("", cargo_run.stderr)
             output_list = result.splitlines()

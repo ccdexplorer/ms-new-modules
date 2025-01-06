@@ -24,6 +24,9 @@ RUN wget https://distribution.concordium.software/tools/linux/concordium-client_
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
+# Add wasm target
+RUN rustup target add wasm32-unknown-unknown
+
 # Install cargo-concordium
 RUN cargo install --locked cargo-concordium
 
