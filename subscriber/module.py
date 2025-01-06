@@ -27,6 +27,9 @@ console = Console()
 
 
 class Module(_utils):
+    # Add this helper at class level
+    def get_project_root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def get_module_metadata(
         self, net: NET, block_hash: str, module_ref: str
@@ -146,10 +149,10 @@ class Module(_utils):
             f"Cargo version: {subprocess.run(['cargo', '--version'], capture_output=True, text=True).stdout}"
         )
 
-        # Before the subprocess.run call, add:
-        tmp_dir = "tmp"
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
+        # # Before the subprocess.run call, add:
+        # tmp_dir = "tmp"
+        # if not os.path.exists(tmp_dir):
+        #     os.makedirs(tmp_dir)
 
         cargo_run = subprocess.run(
             [
@@ -195,19 +198,22 @@ class Module(_utils):
                 source_code_at_verification_time = ""
                 pass
             print(f"{dt.datetime.now()}: Starting subprocess.run for verify-build...")
+            # Add before cargo_run:
+            module_path = f"tmp/{module_ref}.out"
+            print(f"File exists check: {os.path.exists(module_path)}")
+            print(f"Absolute path: {os.path.abspath(module_path)}")
+            print(f"Current directory contents: {os.listdir('.')}")
+            print(f"Tmp directory contents: {os.listdir('tmp')}")
+            # Replace cargo_run section with:
+            project_root = self.get_project_root()
+            module_path = os.path.join(project_root, "tmp", f"{module_ref}.out")
             cargo_run = subprocess.run(
-                [
-                    "cargo",
-                    "concordium",
-                    "verify-build",
-                    "--module",
-                    f"tmp/{module_ref}.out",
-                ],
+                ["cargo", "concordium", "verify-build", "--module", module_path],
                 capture_output=True,
                 text=True,
-                cwd=os.path.dirname(
-                    os.path.abspath(__file__)
-                ),  # Ensure correct working directory
+                # cwd=os.path.dirname(
+                #     os.path.abspath(__file__)
+                # ),  # Ensure correct working directory
             )
 
             if cargo_run.returncode != 0:
