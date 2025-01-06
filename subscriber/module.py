@@ -126,12 +126,34 @@ class Module(_utils):
         tooter_message = f"{net.value}: New module processed {module_ref} with name {module['module_name']}."
         self.send_to_tooter(tooter_message)
 
+    # Add build verification before verify-build
+    def verify_rust_setup(self):
+        # Check Rust installation
+        rust_check = subprocess.run(
+            ["rustc", "--version"], capture_output=True, text=True
+        )
+        print(f"Rust version: {rust_check.stdout}")
+
+        # Check wasm target
+        wasm_check = subprocess.run(
+            ["rustc", "--print", "target-list"], capture_output=True, text=True
+        )
+        print(f"WASM target available: {'wasm32-unknown-unknown' in wasm_check.stdout}")
+
+        # Check cargo-concordium
+        concordium_check = subprocess.run(
+            ["cargo", "concordium", "--version"], capture_output=True, text=True
+        )
+        print(f"Cargo concordium: {concordium_check.stdout}")
+
     async def verify_module(
         self, net: NET, concordium_client: ConcordiumClient, msg: dict
     ):
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.tooter: Tooter
+        # Add verification steps
+        self.verify_rust_setup()
 
         module_ref = msg["module_ref"]
 
@@ -207,14 +229,34 @@ class Module(_utils):
             # Replace cargo_run section with:
             project_root = self.get_project_root()
             module_path = os.path.join(project_root, "tmp", f"{module_ref}.out")
-            cargo_run = subprocess.run(
-                ["cargo", "concordium", "verify-build", "--module", module_path],
-                capture_output=True,
-                text=True,
-                # cwd=os.path.dirname(
-                #     os.path.abspath(__file__)
-                # ),  # Ensure correct working directory
-            )
+            # Extract and build
+            # Extract to specific directory and use it for build
+            source_dir = f"tmp/source_{module_ref}"
+            if os.path.exists(source_dir):
+                shutil.rmtree(source_dir)
+            os.makedirs(source_dir, exist_ok=True)
+
+            try:
+                module_folder.extractall(path=source_dir)
+                module_name_on_disk = next(os.walk(source_dir))[1][0]
+                build_dir = os.path.join(source_dir, module_name_on_disk)
+
+                # Run verify-build from source directory
+                cargo_run = subprocess.run(
+                    ["cargo", "concordium", "verify-build", "--module", module_path],
+                    capture_output=True,
+                    text=True,
+                    cwd=build_dir,  # Run from source directory
+                )
+
+                print(f"Build directory contents: {os.listdir(build_dir)}")
+                print(
+                    f"Cargo.toml exists: {os.path.exists(os.path.join(build_dir, 'Cargo.toml'))}"
+                )
+
+            except Exception as e:
+                print(f"Build error: {str(e)}")
+                raise
 
             if cargo_run.returncode != 0:
                 print(f"Error: {cargo_run.stderr}")
