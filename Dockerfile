@@ -1,15 +1,16 @@
 FROM python:3.12-slim-bookworm
 
-# Add build essentials for Rust compilation
+# Install required packages and build dependencies
 RUN apt-get update && \
     apt-get install -y \
+    wget \
+    curl \
     build-essential \
     pkg-config \
     libssl-dev \
     git \
     cmake \
-    && rustup target add wasm32-unknown-unknown \
-    && cargo install --locked cargo-concordium
+    && rm -rf /var/lib/apt/lists/*
 
 # Set up working directory and create necessary directories
 WORKDIR /home/code
