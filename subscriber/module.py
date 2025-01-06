@@ -16,6 +16,7 @@ from rich.console import Console
 import subprocess
 import httpx
 import os
+import datetime as dt
 import tarfile
 from pathlib import Path
 
@@ -168,7 +169,7 @@ class Module(_utils):
                 module_folder = tarfile.open(
                     fileobj=io.BytesIO(source_code_at_verification_time), mode="r:*"
                 )
-                print(module_folder.getmembers())
+                print(f"{link_to_source_code=} retrieved.")
                 module_folder.extractall(path=f"tmp/source_{module_ref}")
                 module_name_on_disk = next(os.walk(f"tmp/source_{module_ref}"))[1][0]
                 with open(
@@ -177,10 +178,10 @@ class Module(_utils):
                     source_code_at_verification_time = file.read()
 
             except Exception as e:  # noqa: E722
-                print(e)
+                print(f"EXCEPTION: {e}")
                 source_code_at_verification_time = ""
                 pass
-
+            print(f"{dt.datetime.now()}: Starting subprocess.run for verify-build...")
             cargo_run = subprocess.run(
                 [
                     "cargo",
@@ -192,6 +193,7 @@ class Module(_utils):
                 capture_output=True,
                 text=True,
             )
+            print(f"{dt.datetime.now()}: Subprocess.run for verify-build done.")
             result = ansi_escape.sub("", cargo_run.stderr)
             output_list = result.splitlines()
             verified = output_list[-1] == "Source and module match."
@@ -215,7 +217,7 @@ class Module(_utils):
                 link_to_source_code=link_to_source_code,
                 source_code_at_verification_time=source_code_at_verification_time,
             )
-            print(verification)
+            print(f"{verification.verified=}")
             module_from_collection = await db_to_use[Collections.modules].find_one(
                 {"_id": module_ref}
             )
@@ -228,4 +230,5 @@ class Module(_utils):
             tooter_message = f"{net.value}: Module {module_ref} with name {module_from_collection['module_name']} added verification with status {verified}."
             self.send_to_tooter(tooter_message)
         else:
-            print(output_list[0])
+            print(f"Else clause, so  {len(output_list)=}, not == 4")
+            # print(output_list[0])
