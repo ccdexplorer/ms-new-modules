@@ -12,24 +12,26 @@ RUN apt-get update && \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
-# Set up working directory and tmp directory
+# Set up working directory and create necessary directories
 WORKDIR /home/code
-RUN mkdir -p /home/code/tmp && chmod 777 /home/code/tmp
-
+RUN mkdir -p /home/code/tmp && \
+    chmod 777 /home/code/tmp && \
+    mkdir -p /home/code/bin
 
 # Download concordium-client package
-RUN wget https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /code/concordium-client \
-    && chmod +x /code/concordium-client
+RUN wget --no-verbose https://distribution.concordium.software/tools/linux/concordium-client_7.0.1-0 -O /home/code/bin/concordium-client && \
+    chmod +x /home/code/bin/concordium-client
+
+# Add concordium-client to PATH
+ENV PATH="/home/code/bin:${PATH}"
 
 # Download and install rustup with cargo
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Add wasm target
-RUN rustup target add wasm32-unknown-unknown
-
-# Install cargo-concordium
-RUN cargo install --locked cargo-concordium
+# Add wasm target and install cargo-concordium
+RUN rustup target add wasm32-unknown-unknown && \
+    cargo install --locked cargo-concordium
 
 # Install Python dependencies
 COPY requirements.txt .
