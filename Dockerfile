@@ -1,4 +1,6 @@
 FROM python:3.12-slim-bookworm
+# Add a step to install wget
+RUN apt-get update && apt-get install -y wget
 
 WORKDIR /home/code
 # download concordium-client package
