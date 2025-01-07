@@ -74,7 +74,7 @@ async def main():
             "run",
             "-v",
             "/var/run/docker.sock:/var/run/docker.sock",
-            "-ti",
+            "-i",
             "docker",
         ],
         capture_output=True,
