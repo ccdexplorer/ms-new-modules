@@ -85,6 +85,7 @@ async def main():
     #     raise Exception("Failed to start docker container")
 
     print(f"Docker output: {docker_run.stdout}")
+    print(f"Docker error(s): {docker_run.stderr}")
     print("Docker started")
     grpcclient = GRPCClient()
     subscriber = Subscriber(grpcclient, tooter, motormongo, concordium_client)
