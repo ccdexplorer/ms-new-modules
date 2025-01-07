@@ -56,4 +56,11 @@ COPY . .
 RUN groupadd docker || true && \
     usermod -aG docker root
 
-CMD ["python3", "/home/code/main.py"]
+# CMD ["python3", "/home/code/main.py"]
+
+# Copy and set permissions for start script
+COPY start.sh /home/code/start.sh
+RUN chmod +x /home/code/start.sh
+
+# Change CMD to use start script
+CMD ["/home/code/start.sh"]

@@ -67,26 +67,26 @@ def call_cmd(cmd):
 
 
 async def main():
-    print("Starting docker")
-    docker_run = subprocess.run(
-        [
-            "docker",
-            "run",
-            "-v",
-            "/var/run/docker.sock:/var/run/docker.sock",
-            "-i",
-            "docker",
-        ],
-        capture_output=True,
-        text=True,
-    )
-    # if docker_run.returncode != 0:
-    #     print(f"Docker error: {docker_run.stderr}")
-    #     raise Exception("Failed to start docker container")
+    # print("Starting docker")
+    # docker_run = subprocess.run(
+    #     [
+    #         "docker",
+    #         "run",
+    #         "-v",
+    #         "/var/run/docker.sock:/var/run/docker.sock",
+    #         "-i",
+    #         "docker",
+    #     ],
+    #     capture_output=True,
+    #     text=True,
+    # )
+    # # if docker_run.returncode != 0:
+    # #     print(f"Docker error: {docker_run.stderr}")
+    # #     raise Exception("Failed to start docker container")
 
-    print(f"Docker output: {docker_run.stdout}")
-    print(f"Docker error(s): {docker_run.stderr}")
-    print("Docker started")
+    # print(f"Docker output: {docker_run.stdout}")
+    # print(f"Docker error(s): {docker_run.stderr}")
+    # print("Docker started")
     grpcclient = GRPCClient()
     subscriber = Subscriber(grpcclient, tooter, motormongo, concordium_client)
     atexit.register(subscriber.exit)
