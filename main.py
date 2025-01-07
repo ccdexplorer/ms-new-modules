@@ -80,9 +80,9 @@ async def main():
         capture_output=True,
         text=True,
     )
-    if docker_run.returncode != 0:
-        print(f"Docker error: {docker_run.stderr}")
-        raise Exception("Failed to start docker container")
+    # if docker_run.returncode != 0:
+    #     print(f"Docker error: {docker_run.stderr}")
+    #     raise Exception("Failed to start docker container")
 
     print(f"Docker output: {docker_run.stdout}")
     print("Docker started")
