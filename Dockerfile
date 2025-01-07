@@ -1,6 +1,6 @@
 FROM python:3.12-slim-bookworm
 
-# Install required packages and build dependencies
+# Install Docker and dependencies
 RUN apt-get update && \
     apt-get install -y \
     wget \
@@ -10,8 +10,20 @@ RUN apt-get update && \
     libssl-dev \
     git \
     cmake \
-    && rm -rf /var/lib/apt/lists/*
-
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release && \
+    # Add Docker's official GPG key
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
+    # Set up Docker repository
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
+    # Install Docker
+    apt-get update && \
+    apt-get install -y docker-ce docker-ce-cli containerd.io && \
+    # Cleanup
+    rm -rf /var/lib/apt/lists/*
 # Set up working directory and create necessary directories
 WORKDIR /home/code
 RUN mkdir -p /home/code/tmp && \
@@ -39,5 +51,9 @@ RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY . .
+
+# Add user to docker group
+RUN groupadd docker || true && \
+    usermod -aG docker root
 
 CMD ["python3", "/home/code/main.py"]
