@@ -71,16 +71,20 @@ async def main():
     docker_run = subprocess.run(
         [
             "docker",
+            "run",
             "-v",
             "/var/run/docker.sock:/var/run/docker.sock",
             "-ti",
             "docker",
-            "-d",
         ],
         capture_output=True,
         text=True,
     )
-    print(docker_run.stdout)
+    if docker_run.returncode != 0:
+        print(f"Docker error: {docker_run.stderr}")
+        raise Exception("Failed to start docker container")
+
+    print(f"Docker output: {docker_run.stdout}")
     print("Docker started")
     grpcclient = GRPCClient()
     subscriber = Subscriber(grpcclient, tooter, motormongo, concordium_client)
