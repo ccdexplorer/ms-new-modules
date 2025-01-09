@@ -7,7 +7,7 @@ import subprocess
 import aiomqtt
 from aiomqtt.client import Message
 from ccdexplorer_fundamentals.GRPCClient import GRPCClient
-from ccdexplorer_fundamentals.mongodb import MongoMotor
+from ccdexplorer_fundamentals.mongodb import MongoMotor, Collections
 from ccdexplorer_fundamentals.tooter import Tooter
 from ccdexplorer_fundamentals.enums import NET
 from concordium_client import ConcordiumClient
@@ -102,13 +102,19 @@ async def main():
     )
 
     msg = {
-        "module_ref": "c14efbca1dcf314c73cc294cbbf1bd63e3906b20d35442943eb92f52e383fc38"
+        "module_ref": "3617bc04a686f020c1b21fd508c65ee6a9b94cb71aaf7959006207ff5f80d623"
     }
     # msg = {
     #     "module_ref": "f7d13649702c6d24ebd784631beceea79773b10f16f99e21cf81ef8f755b5d44"
     # }
-
-    await subscriber.verify_module(NET.MAINNET, subscriber.concordium_client, msg)
+    for net in NET:
+        db_to_use = motormongo.mainnet if net == NET.MAINNET else motormongo.testnet
+        result = await db_to_use[Collections.modules].find({})
+        for module in result:
+            msg = {"module_ref": module["_id"]}
+            print(f"Working on {net.value} - module: {module['_id']}.........")
+            await subscriber.verify_module(net, subscriber.concordium_client, msg)
+    exit()
     # await subscriber.cleanup("startup")
     # while True:
     #     try:

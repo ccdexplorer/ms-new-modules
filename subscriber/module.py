@@ -287,7 +287,7 @@ class Module(_utils):
                 link_to_source_code=link_to_source_code,
                 source_code_at_verification_time=source_code_at_verification_time,
             )
-            print(f"{verification.verified=}")
+            print(f"{module_ref=}: verified status {verification.verified=}")
             module_from_collection = await db_to_use[Collections.modules].find_one(
                 {"_id": module_ref}
             )
