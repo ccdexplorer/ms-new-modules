@@ -271,29 +271,25 @@ class Module(_utils):
 
                 except Exception as e:
                     print(f"Build error: {str(e)}")
-                    raise
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now(),
+                    )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
 
                 if cargo_run.returncode != 0:
                     print(f"Error: {cargo_run.stderr}")
-                    raise Exception(
-                        f"cargo-concordium verify-build failed: {cargo_run.stderr}"
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now(),
                     )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
+
                 print(f"{dt.datetime.now()}: Subprocess.run for verify-build done.")
                 result = ansi_escape.sub("", cargo_run.stderr)
                 output_list = result.splitlines()
                 verified = output_list[-1] == "Source and module match."
 
-                # if verified:
-                #     response = await httpx.AsyncClient().get(url=link_to_source_code)
-                #     try:
-                #         source_code_at_verification_time = response.json()
-                #     except Exception as e:  # noqa: E722
-                #         print(e)
-                #         source_code_at_verification_time = ""
-                #         pass
-
-                # else:
-                #     source_code_at_verification_time = ""
                 verification = ModuleVerification(
                     verified=verified,
                     verification_timestamp=dt.datetime.now(),
