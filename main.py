@@ -110,9 +110,11 @@ async def main():
     for net in NET:
         db_to_use = motormongo.mainnet if net == NET.MAINNET else motormongo.testnet
         result = await db_to_use[Collections.modules].find({}).to_list(length=None)
-        for module in result:
+        for index, module in enumerate(result):
             msg = {"module_ref": module["_id"]}
-            print(f"Working on {net.value} - module: {module['_id']}.........")
+            print(
+                f"{index+1} / {len(result)} : Working on {net.value} - module: {module['_id']}........."
+            )
             await subscriber.verify_module(net, subscriber.concordium_client, msg)
     exit()
     # await subscriber.cleanup("startup")
