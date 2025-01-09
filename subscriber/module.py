@@ -132,19 +132,19 @@ class Module(_utils):
         rust_check = subprocess.run(
             ["rustc", "--version"], capture_output=True, text=True
         )
-        print(f"Rust version: {rust_check.stdout}")
+        # print(f"Rust version: {rust_check.stdout}")
 
         # Check wasm target
         wasm_check = subprocess.run(
             ["rustc", "--print", "target-list"], capture_output=True, text=True
         )
-        print(f"WASM target available: {'wasm32-unknown-unknown' in wasm_check.stdout}")
+        # print(f"WASM target available: {'wasm32-unknown-unknown' in wasm_check.stdout}")
 
         # Check cargo-concordium
         concordium_check = subprocess.run(
             ["cargo", "concordium", "--version"], capture_output=True, text=True
         )
-        print(f"Cargo concordium: {concordium_check.stdout}")
+        # print(f"Cargo concordium: {concordium_check.stdout}")
 
     async def verify_module(
         self, net: NET, concordium_client: ConcordiumClient, msg: dict
@@ -165,11 +165,11 @@ class Module(_utils):
 
         concordium_client.save_module(net, module_ref)
 
-        print(f"Current working directory: {os.getcwd()}")
-        print(f"Module path exists: {os.path.exists(f'tmp/{module_ref}.out')}")
-        print(
-            f"Cargo version: {subprocess.run(['cargo', '--version'], capture_output=True, text=True).stdout}"
-        )
+        # print(f"Current working directory: {os.getcwd()}")
+        # print(f"Module path exists: {os.path.exists(f'tmp/{module_ref}.out')}")
+        # print(
+        #     f"Cargo version: {subprocess.run(['cargo', '--version'], capture_output=True, text=True).stdout}"
+        # )
 
         # # Before the subprocess.run call, add:
         # tmp_dir = "tmp"
@@ -222,10 +222,10 @@ class Module(_utils):
             print(f"{dt.datetime.now()}: Starting subprocess.run for verify-build...")
             # Add before cargo_run:
             module_path = f"tmp/{module_ref}.out"
-            print(f"File exists check: {os.path.exists(module_path)}")
-            print(f"Absolute path: {os.path.abspath(module_path)}")
-            print(f"Current directory contents: {os.listdir('.')}")
-            print(f"Tmp directory contents: {os.listdir('tmp')}")
+            # print(f"File exists check: {os.path.exists(module_path)}")
+            # print(f"Absolute path: {os.path.abspath(module_path)}")
+            # print(f"Current directory contents: {os.listdir('.')}")
+            # print(f"Tmp directory contents: {os.listdir('tmp')}")
             # Replace cargo_run section with:
             project_root = self.get_project_root()
             module_path = os.path.join(project_root, "tmp", f"{module_ref}.out")
@@ -249,10 +249,10 @@ class Module(_utils):
                     cwd=build_dir,  # Run from source directory
                 )
 
-                print(f"Build directory contents: {os.listdir(build_dir)}")
-                print(
-                    f"Cargo.toml exists: {os.path.exists(os.path.join(build_dir, 'Cargo.toml'))}"
-                )
+                # print(f"Build directory contents: {os.listdir(build_dir)}")
+                # print(
+                #     f"Cargo.toml exists: {os.path.exists(os.path.join(build_dir, 'Cargo.toml'))}"
+                # )
 
             except Exception as e:
                 print(f"Build error: {str(e)}")
@@ -300,5 +300,5 @@ class Module(_utils):
             tooter_message = f"{net.value}: Module {module_ref} with name {module_from_collection['module_name']} added verification with status {verified}."
             self.send_to_tooter(tooter_message)
         else:
-            print(f"Else clause, so  {len(output_list)=}, not == 4")
+            print(f"No build info found.")
             # print(output_list[0])

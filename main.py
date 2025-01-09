@@ -109,7 +109,7 @@ async def main():
     # }
     for net in NET:
         db_to_use = motormongo.mainnet if net == NET.MAINNET else motormongo.testnet
-        result = await db_to_use[Collections.modules].find({})
+        result = await db_to_use[Collections.modules].find({}).to_list(length=None)
         for module in result:
             msg = {"module_ref": module["_id"]}
             print(f"Working on {net.value} - module: {module['_id']}.........")
