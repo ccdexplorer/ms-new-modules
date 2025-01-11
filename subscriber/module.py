@@ -34,6 +34,22 @@ class Module(_utils):
     def get_module_metadata(
         self, net: NET, block_hash: str, module_ref: str
     ) -> dict[str, str]:
+        """
+        Retrieves metadata for a specified module. Parses the web assembly source code.
+
+        Args:
+            net (NET): The network from which to retrieve the module.
+            block_hash (str): The hash of the block containing the module.
+            module_ref (str): The reference identifier for the module.
+
+        Returns:
+            dict[str, str]: A dictionary containing the module's metadata. The keys include:
+                - "module_name": The name of the module (if found).
+                - "methods": A list of method names exported by the module (if any).
+
+        Raises:
+            Exception: If there is an error parsing the module, an error message is sent to the tooter and an empty dictionary is returned.
+        """
         self.grpcclient: GRPCClient
         ms = self.grpcclient.get_module_source(module_ref, block_hash, net)
 
@@ -97,6 +113,24 @@ class Module(_utils):
         )
 
     async def process_new_module(self, net: NET, msg: dict):
+        """
+        Processes a new module by fetching its metadata and updating the database.
+        Args:
+            net (NET): The network type (MAINNET or TESTNET).
+            msg (dict): The message containing the module reference.
+        Returns:
+            None
+        Raises:
+            Exception: If there is an error while fetching module metadata.
+        The function performs the following steps:
+        1. Determines the database to use based on the network type.
+        2. Fetches the module metadata using the provided module reference.
+        3. If an error occurs during metadata fetching, sends an error message to the tooter.
+        4. Constructs a module dictionary with the fetched metadata.
+        5. Updates the database with the new module information using a bulk write operation.
+        6. Sends a success message to the tooter with the module reference and name.
+        """
+
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.grpcclient: GRPCClient
@@ -129,6 +163,27 @@ class Module(_utils):
     async def verify_module(
         self, net: NET, concordium_client: ConcordiumClient, msg: dict
     ):
+        """
+        Verifies a module by checking its build information and source code.
+        This asynchronous method performs the following steps:
+        1. Determines the appropriate database to use based on the network (mainnet or testnet).
+        2. Saves the module using the Concordium client.
+        3. Runs a subprocess to print the build information of the module.
+        4. Parses the build information to extract the build image, build command, and archive hash.
+        5. Checks if the source code link is present in the build information.
+        6. If the source code link is present, retrieves the source code from the link.
+        7. Extracts the source code and verifies it against the module using a subprocess.
+        8. Saves and sends the verification result.
+        Args:
+            net (NET): The network type (mainnet or testnet).
+            concordium_client (ConcordiumClient): The Concordium client used to interact with the blockchain.
+            msg (dict): The message containing the module reference.
+        Returns:
+            None: This method does not return any value. It performs actions and sends the verification result.
+        Raises:
+            httpx.HTTPError: If there is an HTTP error while retrieving the source code.
+            Exception: If there is an error during the extraction or verification process.
+        """
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.tooter: Tooter
@@ -322,6 +377,21 @@ class Module(_utils):
     async def save_and_send(
         self, net, module_ref, db_to_use, verification: ModuleVerification
     ):
+        """
+        Asynchronously saves the module verification status to the database and sends a notification.
+        Args:
+            net (Network): The network instance.
+            module_ref (str): The reference ID of the module.
+            db_to_use (Database): The database instance to use for saving the verification status.
+            verification (ModuleVerification): The verification object containing the verification status and explanation.
+        Returns:
+            None
+        Side Effects:
+            - Updates the module's verification status in the database.
+            - Sends a notification message to the tooter service.
+        Example:
+            await save_and_send(net, module_ref, db_to_use, verification)
+        """
         print(f"{module_ref=}: verified status {verification.verified=}")
         module_from_collection = await db_to_use[Collections.modules].find_one(
             {"_id": module_ref}
