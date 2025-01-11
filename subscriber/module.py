@@ -3,13 +3,23 @@ import io
 import ccdexplorer_fundamentals.GRPCClient.wadze as wadze
 from ccdexplorer_fundamentals.enums import NET
 from ccdexplorer_fundamentals.GRPCClient import GRPCClient
+import re
 from ccdexplorer_fundamentals.mongodb import (
     Collections,
 )
 from ccdexplorer_fundamentals.tooter import Tooter
+from ccdexplorer_fundamentals.mongodb import MongoTypeModule, ModuleVerification
 from pymongo import DeleteOne, ReplaceOne
 from pymongo.collection import Collection
+from concordium_client import ConcordiumClient
 from rich.console import Console
+import subprocess
+import httpx
+import os
+import shutil
+import datetime as dt
+import tarfile
+from pathlib import Path
 
 from .utils import Utils as _utils
 
@@ -17,6 +27,10 @@ console = Console()
 
 
 class Module(_utils):
+    # Add this helper at class level
+    def get_project_root(self):
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def get_module_metadata(
         self, net: NET, block_hash: str, module_ref: str
     ) -> dict[str, str]:
@@ -56,10 +70,10 @@ class Module(_utils):
 
         return results
 
-    async def cleanup(self):
+    async def cleanup(self, from_: str):
 
         for net in NET:
-            console.log(f"Running cleanup for {net}")
+            console.log(f"Running cleanup for {net} from {from_}.")
             db: dict[Collections, Collection] = (
                 self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
             )
@@ -103,10 +117,244 @@ class Module(_utils):
                 results["module_name"] if "module_name" in results.keys() else None
             ),
             "methods": results["methods"] if "methods" in results.keys() else [],
+            "verification": None,
         }
 
         _ = await db_to_use[Collections.modules].bulk_write(
             [ReplaceOne({"_id": module_ref}, module, upsert=True)]
         )
         tooter_message = f"{net.value}: New module processed {module_ref} with name {module['module_name']}."
+        self.send_to_tooter(tooter_message)
+
+    # Add build verification before verify-build
+    def verify_rust_setup(self):
+        # Check Rust installation
+        rust_check = subprocess.run(
+            ["rustc", "--version"], capture_output=True, text=True
+        )
+        # print(f"Rust version: {rust_check.stdout}")
+
+        # Check wasm target
+        wasm_check = subprocess.run(
+            ["rustc", "--print", "target-list"], capture_output=True, text=True
+        )
+        # print(f"WASM target available: {'wasm32-unknown-unknown' in wasm_check.stdout}")
+
+        # Check cargo-concordium
+        concordium_check = subprocess.run(
+            ["cargo", "concordium", "--version"], capture_output=True, text=True
+        )
+        # print(f"Cargo concordium: {concordium_check.stdout}")
+
+    async def verify_module(
+        self, net: NET, concordium_client: ConcordiumClient, msg: dict
+    ):
+        self.motor_mainnet: dict[Collections, Collection]
+        self.motor_testnet: dict[Collections, Collection]
+        self.tooter: Tooter
+        # Add verification steps
+        self.verify_rust_setup()
+
+        module_ref = msg["module_ref"]
+
+        file_path = Path(f"tmp/{module_ref}.out")
+        if file_path.exists():
+            file_path.unlink()
+
+        db_to_use = self.motor_mainnet if net == NET.MAINNET else self.motor_testnet
+
+        concordium_client.save_module(net, module_ref)
+
+        cargo_run = subprocess.run(
+            [
+                "cargo",
+                "concordium",
+                "print-build-info",
+                "--module",
+                f"tmp/{module_ref}.out",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+        result = ansi_escape.sub("", cargo_run.stderr)
+        output_list = result.splitlines()
+        verification = None
+
+        if len(output_list) == 4:
+            build_image_used = output_list[0].split("used: ")[1].strip()
+            build_command_used = output_list[1].split("used: ")[1].strip()
+            archive_hash = output_list[2].split("archive: ")[1].strip()
+
+            if "source code: " not in output_list[3]:
+                verification = ModuleVerification(
+                    verified=False,
+                    verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                    explanation="No source code found.",
+                )
+                await self.save_and_send(net, module_ref, db_to_use, verification)
+                return None
+            else:
+                link_to_source_code = output_list[3].split("source code: ")[1].strip()
+                source_code_at_verification_time = ""
+
+                try:
+                    response = await httpx.AsyncClient().get(
+                        url=link_to_source_code, follow_redirects=True
+                    )
+                    response.raise_for_status()
+                except httpx.HTTPError as exc:
+                    print(f"HTTP Exception for {exc.request.url} - {exc}")
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                        explanation=f"HTTP Exception for {exc.request.url} - {exc}",
+                        build_image_used=build_image_used,
+                        build_command_used=build_command_used,
+                        archive_hash=archive_hash,
+                        link_to_source_code=link_to_source_code,
+                        source_code_at_verification_time="",
+                    )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
+                    return None
+                try:
+                    source_code_at_verification_time = response.content
+                    module_folder = tarfile.open(
+                        fileobj=io.BytesIO(source_code_at_verification_time), mode="r:*"
+                    )
+                    print(f"{link_to_source_code=} retrieved.")
+                    module_folder.extractall(path=f"tmp/source_{module_ref}")
+                    module_name_on_disk = next(os.walk(f"tmp/source_{module_ref}"))[1][
+                        0
+                    ]
+                    with open(
+                        f"tmp/source_{module_ref}/{module_name_on_disk}/src/lib.rs", "r"
+                    ) as file:
+                        source_code_at_verification_time = file.read()
+
+                except Exception as e:  # noqa: E722
+                    print(f"EXCEPTION: {e}")
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                        explanation=e,
+                        build_image_used=build_image_used,
+                        build_command_used=build_command_used,
+                        archive_hash=archive_hash,
+                        link_to_source_code=link_to_source_code,
+                        source_code_at_verification_time="",
+                    )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
+                    return None
+
+                print(
+                    f"{dt.datetime.now().astimezone(dt.UTC)}: Starting subprocess.run for verify-build..."
+                )
+
+                module_path = f"tmp/{module_ref}.out"
+                project_root = self.get_project_root()
+                module_path = os.path.join(project_root, "tmp", f"{module_ref}.out")
+
+                source_dir = f"tmp/source_{module_ref}"
+                if os.path.exists(source_dir):
+                    shutil.rmtree(source_dir)
+                os.makedirs(source_dir, exist_ok=True)
+
+                try:
+                    module_folder.extractall(path=source_dir)
+                    module_name_on_disk = next(os.walk(source_dir))[1][0]
+                    build_dir = os.path.join(source_dir, module_name_on_disk)
+
+                    # Run verify-build from source directory
+                    cargo_run = subprocess.run(
+                        [
+                            "cargo",
+                            "concordium",
+                            "verify-build",
+                            "--module",
+                            module_path,
+                        ],
+                        capture_output=True,
+                        text=True,
+                        cwd=build_dir,  # Run from source directory
+                    )
+
+                except Exception as e:
+                    print(f"Build error: {str(e)}")
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                        explanation=e,
+                        build_image_used=build_image_used,
+                        build_command_used=build_command_used,
+                        archive_hash=archive_hash,
+                        link_to_source_code=link_to_source_code,
+                        source_code_at_verification_time="",
+                    )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
+                    return None
+
+                if cargo_run.returncode != 0:
+                    print(f"Error: {cargo_run.stderr}")
+                    verification = ModuleVerification(
+                        verified=False,
+                        verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                        explanation="The source does not correspond to the module.",
+                        build_image_used=build_image_used,
+                        build_command_used=build_command_used,
+                        archive_hash=archive_hash,
+                        link_to_source_code=link_to_source_code,
+                        source_code_at_verification_time="",
+                    )
+                    await self.save_and_send(net, module_ref, db_to_use, verification)
+                    return None
+
+                print(
+                    f"{dt.datetime.now().astimezone(dt.UTC)}: Subprocess.run for verify-build done."
+                )
+                result = ansi_escape.sub("", cargo_run.stderr)
+                output_list = result.splitlines()
+                verified = output_list[-1] == "Source and module match."
+
+                verification = ModuleVerification(
+                    verified=verified,
+                    verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                    explanation=(
+                        "Source and module match."
+                        if verified
+                        else "Source and module do not match."
+                    ),
+                    build_image_used=build_image_used,
+                    build_command_used=build_command_used,
+                    archive_hash=archive_hash,
+                    link_to_source_code=link_to_source_code,
+                    source_code_at_verification_time=source_code_at_verification_time,
+                )
+                await self.save_and_send(net, module_ref, db_to_use, verification)
+        else:
+            verification = ModuleVerification(
+                verified=False,
+                verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
+                explanation="No embedded build information found.",
+            )
+            await self.save_and_send(net, module_ref, db_to_use, verification)
+            print("No build info found.")
+            return None
+
+    async def save_and_send(
+        self, net, module_ref, db_to_use, verification: ModuleVerification
+    ):
+        print(f"{module_ref=}: verified status {verification.verified=}")
+        module_from_collection = await db_to_use[Collections.modules].find_one(
+            {"_id": module_ref}
+        )
+
+        module_from_collection.update(
+            {"verification": verification.model_dump(exclude_none=True)}
+        )
+
+        _ = await db_to_use[Collections.modules].bulk_write(
+            [ReplaceOne({"_id": module_ref}, module_from_collection, upsert=True)]
+        )
+        tooter_message = f"{net.value}: Module {module_ref} with name {module_from_collection['module_name']} added verification with status {verification.verified}. Explanation: {verification.explanation}."
         self.send_to_tooter(tooter_message)

@@ -11,6 +11,7 @@ python-dotenv
 paho-mqtt
 protobuf==4.25.4
 rich
-pymongo
+pymongo==4.8.0
 base58
 pydantic
+httpx
