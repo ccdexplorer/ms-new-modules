@@ -30,7 +30,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: ccdexplorer/ms-new-modules-verify
+          images: ccdexplorer/ms-new-modules
           tags: |
               type=ref,event=branch
               

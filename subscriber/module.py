@@ -8,7 +8,7 @@ from ccdexplorer_fundamentals.mongodb import (
     Collections,
 )
 from ccdexplorer_fundamentals.tooter import Tooter
-from ccdexplorer_fundamentals.mongodb import MongoTypeModule, ModuleVerification
+from ccdexplorer_fundamentals.mongodb import ModuleVerification
 from pymongo import DeleteOne, ReplaceOne
 from pymongo.collection import Collection
 from concordium_client import ConcordiumClient
@@ -126,34 +126,12 @@ class Module(_utils):
         tooter_message = f"{net.value}: New module processed {module_ref} with name {module['module_name']}."
         self.send_to_tooter(tooter_message)
 
-    # Add build verification before verify-build
-    def verify_rust_setup(self):
-        # Check Rust installation
-        rust_check = subprocess.run(
-            ["rustc", "--version"], capture_output=True, text=True
-        )
-        # print(f"Rust version: {rust_check.stdout}")
-
-        # Check wasm target
-        wasm_check = subprocess.run(
-            ["rustc", "--print", "target-list"], capture_output=True, text=True
-        )
-        # print(f"WASM target available: {'wasm32-unknown-unknown' in wasm_check.stdout}")
-
-        # Check cargo-concordium
-        concordium_check = subprocess.run(
-            ["cargo", "concordium", "--version"], capture_output=True, text=True
-        )
-        # print(f"Cargo concordium: {concordium_check.stdout}")
-
     async def verify_module(
         self, net: NET, concordium_client: ConcordiumClient, msg: dict
     ):
         self.motor_mainnet: dict[Collections, Collection]
         self.motor_testnet: dict[Collections, Collection]
         self.tooter: Tooter
-        # Add verification steps
-        self.verify_rust_setup()
 
         module_ref = msg["module_ref"]
 
