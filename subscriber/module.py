@@ -102,6 +102,16 @@ class Module(_utils):
             for msg in todo_modules:
                 await self.process_new_module(net, msg)
                 await self.remove_todo_from_queue(net, msg)
+                await self.verify_module(net, self.concordium_client, msg)
+
+            # specials for non verified modules
+            todo_modules = (
+                await db[Collections.modules]
+                .find({"verification.verification_status": "not_started"})
+                .to_list(length=None)
+            )
+            for msg in todo_modules:
+                await self.verify_module(net, self.concordium_client, msg)
 
     async def remove_todo_from_queue(self, net: NET, msg: dict):
         db: dict[Collections, Collection] = (
@@ -151,7 +161,9 @@ class Module(_utils):
                 results["module_name"] if "module_name" in results.keys() else None
             ),
             "methods": results["methods"] if "methods" in results.keys() else [],
-            "verification": None,
+            "verification": ModuleVerification(
+                verification_status="not_started"
+            ).model_dump(exclude_none=True),
         }
 
         _ = await db_to_use[Collections.modules].bulk_write(
@@ -222,6 +234,7 @@ class Module(_utils):
             if "source code: " not in output_list[3]:
                 verification = ModuleVerification(
                     verified=False,
+                    verification_status="verified_failed",
                     verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                     explanation="No source code found.",
                 )
@@ -240,6 +253,7 @@ class Module(_utils):
                     print(f"HTTP Exception for {exc.request.url} - {exc}")
                     verification = ModuleVerification(
                         verified=False,
+                        verification_status="verified_failed",
                         verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                         explanation=f"HTTP Exception for {exc.request.url} - {exc}",
                         build_image_used=build_image_used,
@@ -269,6 +283,7 @@ class Module(_utils):
                     print(f"EXCEPTION: {e}")
                     verification = ModuleVerification(
                         verified=False,
+                        verification_status="verified_failed",
                         verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                         explanation=e,
                         build_image_used=build_image_used,
@@ -316,6 +331,7 @@ class Module(_utils):
                     print(f"Build error: {str(e)}")
                     verification = ModuleVerification(
                         verified=False,
+                        verification_status="verified_failed",
                         verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                         explanation=e,
                         build_image_used=build_image_used,
@@ -331,6 +347,7 @@ class Module(_utils):
                     print(f"Error: {cargo_run.stderr}")
                     verification = ModuleVerification(
                         verified=False,
+                        verification_status="verified_failed",
                         verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                         explanation="The source does not correspond to the module.",
                         build_image_used=build_image_used,
@@ -351,6 +368,7 @@ class Module(_utils):
 
                 verification = ModuleVerification(
                     verified=verified,
+                    verification_status="verified_success",
                     verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                     explanation=(
                         "Source and module match."
@@ -367,6 +385,7 @@ class Module(_utils):
         else:
             verification = ModuleVerification(
                 verified=False,
+                verification_status="verified_failed",
                 verification_timestamp=dt.datetime.now().astimezone(dt.UTC),
                 explanation="No embedded build information found.",
             )
