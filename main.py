@@ -7,8 +7,10 @@ import subprocess
 import aiomqtt
 from aiomqtt.client import Message
 from ccdexplorer_fundamentals.GRPCClient import GRPCClient
-from ccdexplorer_fundamentals.mongodb import MongoMotor
+from ccdexplorer_fundamentals.mongodb import MongoMotor, Collections, ModuleVerification
 from ccdexplorer_fundamentals.tooter import Tooter
+from pymongo import DeleteOne, ReplaceOne
+from rich.progress import track
 from ccdexplorer_fundamentals.enums import NET
 from concordium_client import ConcordiumClient
 from env import (
@@ -84,13 +86,46 @@ async def main():
     # for net in NET:
     #     db_to_use = motormongo.mainnet if net == NET.MAINNET else motormongo.testnet
     #     result = await db_to_use[Collections.modules].find({}).to_list(length=None)
-    #     for index, module in enumerate(result[270:]):
-    #         msg = {"module_ref": module["_id"]}
-    #         print(
-    #             f"{index+1} / {len(result)} : Working on {net.value} - module: {module['_id']}........."
+    #     for module in track(result):
+    #         if "verification" in module:
+    #             if module["verification"] is not None:
+    #                 if module["verification"]["verified"] is False:
+    #                     module["verification"].update(
+    #                         {"verification_status": "verified_failed"}
+    #                     )
+    #                 else:
+    #                     module["verification"].update(
+    #                         {"verification_status": "verified_success"}
+    #                     )
+    #             else:
+    #                 module.update(
+    #                     {
+    #                         "verification": ModuleVerification(
+    #                             verification_status="not_started"
+    #                         ).model_dump(exclude_none=True),
+    #                     }
+    #                 )
+    #         else:
+    #             module.update(
+    #                 {
+    #                     "verification": ModuleVerification(
+    #                         verification_status="not_started"
+    #                     ).model_dump(exclude_none=True),
+    #                 }
+    #             )
+
+    #         _ = await db_to_use[Collections.modules].bulk_write(
+    #             [ReplaceOne({"_id": module["_id"]}, module, upsert=True)]
     #         )
-    #         await subscriber.verify_module(net, subscriber.concordium_client, msg)
+
     # exit()
+    # msg = {
+    #     "module_ref": "98c0395109389123ea2f9370482ed8654487402f290361d2cf86a87d2065820f"
+    # }
+
+    # await subscriber.process_new_module(NET.TESTNET, msg)
+    # await subscriber.verify_module(NET.TESTNET, subscriber.concordium_client, msg)
+    await subscriber.cleanup("topic")
     while True:
         try:
             async with client:

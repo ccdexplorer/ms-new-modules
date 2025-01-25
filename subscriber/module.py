@@ -200,7 +200,10 @@ class Module(_utils):
         self.motor_testnet: dict[Collections, Collection]
         self.tooter: Tooter
 
-        module_ref = msg["module_ref"]
+        if "module_ref" in msg:
+            module_ref = msg["module_ref"]
+        else:
+            module_ref = msg["_id"]
 
         file_path = Path(f"tmp/{module_ref}.out")
         if file_path.exists():
